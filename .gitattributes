@@ -1,0 +1,8 @@
+* text=auto
+
+Makefile text
+*.md text diff=markdown
+*.svg text
+
+*.c text diff=cpp
+*.h text diff=cpp
