@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="579px" preserveAspectRatio="none" style="width:407px;height:579px;background:#FFFFFF;" version="1.1" viewBox="0 0 407 579" width="407px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="sans-serif" font-size="18" lengthAdjust="spacing" textLength="121" x="139.75" y="29.4023">Load Program</text><line style="stroke:#A80036;stroke-width:1.0;" x1="59" x2="59" y1="71.6875" y2="572.3457"/><line style="stroke:#A80036;stroke-width:1.0;" x1="260.5" x2="260.5" y1="71.6875" y2="572.3457"/><rect fill="#FEFECE" height="30.4883" style="stroke:#A80036;stroke-width:1.5;" width="45" x="37" y="40.1992"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="31" x="44" y="60.7344">Host</text><rect fill="#FEFECE" height="30.4883" style="stroke:#A80036;stroke-width:1.5;" width="102" x="209.5" y="40.1992"/><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="88" x="216.5" y="60.7344">Target(id=2)</text><line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="0" x2="400.5" y1="82.6875" y2="82.6875"/><polygon fill="#A80036" points="248.5,111.6533,258.5,115.6533,248.5,119.6533,252.5,115.6533" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="115.6533" y2="115.6533"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="131" x="94.5" y="110.9111">START (id=2,len=18)</text><path d="M265,88.6875 L265,128.6875 L390,128.6875 L390,98.6875 L380,88.6875 L265,88.6875 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><path d="M380,88.6875 L380,98.6875 L390,98.6875 L380,88.6875 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="77" x="271" y="106.2559">Start load of</text><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="104" x="271" y="121.5664">18 byte program</text><polygon fill="#A80036" points="70.5,151.6191,60.5,155.6191,70.5,159.6191,66.5,155.6191" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="155.6191" y2="155.6191"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102" x="109" y="150.877">REPORT (READY)</text><polygon fill="#A80036" points="248.5,183.9297,258.5,187.9297,248.5,191.9297,252.5,187.9297" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="187.9297" y2="187.9297"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="94" x="113" y="183.1875">DATA (8 bytes)</text><path d="M265,168.6191 L265,193.6191 L362,193.6191 L362,178.6191 L352,168.6191 L265,168.6191 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><path d="M352,168.6191 L352,178.6191 L362,178.6191 L352,168.6191 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="76" x="271" y="186.1875">first 8 bytes</text><polygon fill="#A80036" points="70.5,216.2402,60.5,220.2402,70.5,224.2402,66.5,220.2402" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="220.2402" y2="220.2402"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102" x="109" y="215.498">REPORT (READY)</text><polygon fill="#A80036" points="248.5,248.5508,258.5,252.5508,248.5,256.5508,252.5,252.5508" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="252.5508" y2="252.5508"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="94" x="113" y="247.8086">DATA (8 bytes)</text><path d="M265,233.2402 L265,258.2402 L364,258.2402 L364,243.2402 L354,233.2402 L265,233.2402 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><path d="M354,233.2402 L354,243.2402 L364,243.2402 L354,233.2402 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="78" x="271" y="250.8086">next 8 bytes</text><polygon fill="#A80036" points="70.5,280.8613,60.5,284.8613,70.5,288.8613,66.5,284.8613" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="284.8613" y2="284.8613"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="102" x="109" y="280.1191">REPORT (READY)</text><polygon fill="#A80036" points="248.5,313.1719,258.5,317.1719,248.5,321.1719,252.5,317.1719" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="317.1719" y2="317.1719"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="177" x="71.5" y="312.4297">DATA (2 bytes+6 pad bytes)</text><path d="M265,297.8613 L265,322.8613 L364,322.8613 L364,307.8613 L354,297.8613 L265,297.8613 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><path d="M354,297.8613 L354,307.8613 L364,307.8613 L354,297.8613 " fill="#FBFB77" style="stroke:#A80036;stroke-width:1.0;"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="78" x="271" y="315.4297">final 2 bytes</text><polygon fill="#A80036" points="70.5,345.4824,60.5,349.4824,70.5,353.4824,66.5,349.4824" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="349.4824" y2="349.4824"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="87" x="116.5" y="344.7402">REPORT (END)</text><rect fill="#EEEEEE" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="400.5" x="0" y="378.1377"/><line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="400.5" y1="378.1377" y2="378.1377"/><line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="400.5" y1="381.1377" y2="381.1377"/><rect fill="#EEEEEE" height="23.3105" style="stroke:#000000;stroke-width:2.0;" width="155" x="122.75" y="367.4824"/><text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="137" x="128.75" y="384.0508">Load was successful</text><polygon fill="#A80036" points="248.5,418.1035,258.5,422.1035,248.5,426.1035,252.5,422.1035" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="422.1035" y2="422.1035"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="59" x="130.5" y="417.3613">STOP(crc)</text><polygon fill="#A80036" points="70.5,447.4141,60.5,451.4141,70.5,455.4141,66.5,451.4141" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="451.4141" y2="451.4141"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="113" x="103.5" y="446.6719">REPORT(DONE,ok)</text><rect fill="#EEEEEE" height="3" style="stroke:#EEEEEE;stroke-width:1.0;" width="400.5" x="0" y="480.0693"/><line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="400.5" y1="480.0693" y2="480.0693"/><line style="stroke:#000000;stroke-width:1.0;" x1="0" x2="400.5" y1="483.0693" y2="483.0693"/><rect fill="#EEEEEE" height="23.3105" style="stroke:#000000;stroke-width:2.0;" width="117" x="141.75" y="469.4141"/><text fill="#000000" font-family="sans-serif" font-size="13" font-weight="bold" lengthAdjust="spacing" textLength="99" x="147.75" y="485.9824">Load has error</text><polygon fill="#A80036" points="248.5,520.0352,258.5,524.0352,248.5,528.0352,252.5,524.0352" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="59.5" x2="254.5" y1="524.0352" y2="524.0352"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="59" x="130.5" y="519.293">STOP(crc)</text><polygon fill="#A80036" points="70.5,549.3457,60.5,553.3457,70.5,557.3457,66.5,553.3457" style="stroke:#A80036;stroke-width:1.0;"/><line style="stroke:#A80036;stroke-width:1.0;" x1="64.5" x2="259.5" y1="553.3457" y2="553.3457"/><text fill="#000000" font-family="sans-serif" font-size="13" lengthAdjust="spacing" textLength="127" x="96.5" y="548.6035">REPORT(DONE,error)</text><line style="stroke:#000000;stroke-width:1.0;stroke-dasharray:2.0,2.0;" x1="0" x2="400.5" y1="561.3457" y2="561.3457"/><!--MD5=[676794b42bd04050ff184e958556f9e1]
+@startuml
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+hide footbox
+participant Host as H
+participant "Target(id=2)" as T
+
+title Discover Boot Load Targets
+
+== Try ID 1 ==
+
+H ->] : PING(id=1)
+note over H: target w/id=1\nnot present
+...no reply...
+
+== Try ID 2 ==
+
+H -> T : PING(id=2)
+T -> H : REPORT (PONG)
+
+newpage Load Program
+
+H -> T : START (id=2,len=18)
+note right: Start load of\n18 byte program
+T -> H : REPORT (READY)
+
+H -> T : DATA (8 bytes)
+note right: first 8 bytes
+T -> H : REPORT (READY)
+H -> T : DATA (8 bytes)
+note right: next 8 bytes
+T -> H : REPORT (READY)
+H -> T : DATA (2 bytes+6 pad bytes)
+note right: final 2 bytes
+T -> H : REPORT (END)
+
+== Load was successful ==
+H -> T : STOP(crc)
+T -> H : REPORT(DONE,ok)
+
+== Load has error ==
+H -> T : STOP(crc)
+T -> H : REPORT(DONE,error)
+
+newpage Exit Boot Loader
+
+H -> T : RESTART
+T -> H : REPORT(BOOT)
+note over T: target reboots
+
+@enduml
+
+PlantUML version 1.2021.10(Mon Aug 30 08:43:48 CDT 2021)
+(GPL source distribution)
+Java Runtime: OpenJDK Runtime Environment
+JVM: OpenJDK 64-Bit Server VM
+Default Encoding: UTF-8
+Language: en
+Country: US
+--></g></svg>

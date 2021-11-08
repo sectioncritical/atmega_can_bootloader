@@ -1,0 +1,28 @@
+@startuml
+skinparam shadowing false
+
+start
+
+if (Reset Type) then (POR/HW))
+    :set timeout=Boot;
+else (App)
+    :set timeout=Activity;
+endif
+
+repeat
+    if (Message\nReceived?) then (yes)
+        :Process Message;
+        :set timeout=Activity;
+    else (no)
+    endif
+repeat while (timeout?) is (no)
+->yes;
+
+if (App Integrity?) then (ok)
+    :start app;
+else (nok)
+    :reboot;
+endif
+stop
+
+@enduml

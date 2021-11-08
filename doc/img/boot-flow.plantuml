@@ -1,0 +1,51 @@
+@startuml
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+hide footbox
+participant Host as H
+participant "Target(id=2)" as T
+
+title Discover Boot Load Targets
+
+== Try ID 1 ==
+
+H ->] : PING(id=1)
+note over H: target w/id=1\nnot present
+...no reply...
+
+== Try ID 2 ==
+
+H -> T : PING(id=2)
+T -> H : REPORT (PONG)
+
+newpage Load Program
+
+H -> T : START (id=2,len=18)
+note right: Start load of\n18 byte program
+T -> H : REPORT (READY)
+
+H -> T : DATA (8 bytes)
+note right: first 8 bytes
+T -> H : REPORT (READY)
+H -> T : DATA (8 bytes)
+note right: next 8 bytes
+T -> H : REPORT (READY)
+H -> T : DATA (2 bytes+6 pad bytes)
+note right: final 2 bytes
+T -> H : REPORT (END)
+
+== Load was successful ==
+H -> T : STOP(crc)
+T -> H : REPORT(DONE,ok)
+
+== Load has error ==
+H -> T : STOP(crc)
+T -> H : REPORT(DONE,error)
+
+newpage Exit Boot Loader
+
+H -> T : RESTART
+T -> H : REPORT(BOOT)
+note over T: target reboots
+
+@enduml
