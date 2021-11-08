@@ -26,9 +26,115 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <avr/io.h>
+#include <util/crc16.h>
 
 #define F_CPU 8000000UL
 #include <util/delay.h>
+
+// CAN ID that must match to receive a message.
+// The mask shows the bits that must match. This leaves the lower 4 bits of
+// boot loader command available to match on any 4 bit command value. The
+// board ID portion (bits 7:4) will be replaced at run time with the
+// board ID.
+#define CANID       0x1B007100UL
+#define CANIDMASK   0x1FFFFFF0UL
+
+// define timeouts used when waiting for messages
+// units are milliseconds
+#define SHORT_TIMEOUT 1000U
+#define LONG_TIMEOUT 10000U
+
+// BOOTVER should be defined when firmware is built
+// a placeholder is used if it is not defined. The placeholder means
+// development, non-production version
+#ifndef BOOTVER
+#define BOOTVER 0x636363UL
+#endif
+static const uint8_t version[3] = {
+    (uint8_t)(BOOTVER >> 16), (uint8_t)(BOOTVER >> 8), (uint8_t)BOOTVER
+};
+
+/** Boot loader command definitions. */
+enum CmdId {
+    CMD_PING = 0,   ///< Check for boot loader device presence
+    CMD_REBOOT,     ///< Cause the target to reset
+    CMD_START,      ///< Start a program load
+    CMD_DATA,       ///< Send 8 bytes of program data
+    CMD_STOP,       ///< Finish program load and provide CRC
+    CMD_REPORT,     ///< Reply from boot loader to all commands
+    CMD_CRCTEST
+};
+
+/** Boot loader report definitions. */
+enum RptId {
+    RPT_PONG = 0,   ///< Reply to PING
+    RPT_READY,      ///< Ready for next DATA block
+    RPT_END,        ///< All expected DATA blocks have been received
+    RPT_DONE,       ///< Acknowledge completion of load success or failure
+    RPT_BOOT,       ///< Acknowledge imminent reboot
+    RPT_CRC,
+    RPT_ERR         ///< TBD error condition
+};
+
+/** Receive message status. */
+enum RcvStatus {
+    MSG_NONE = 0,   ///< No message is available
+    MSG_READY,      ///< A new message was received
+    MSG_ERROR       ///< An error occurred recieving a message
+};
+
+// convenience macros for manipulating CAN page register
+#define SAVE_CANPAGE uint8_t _cansave = CANPAGE
+#define RESTORE_CANPAGE CANPAGE = _cansave
+#define SET_CANPAGE(p) do { CANPAGE = (p) << MOBNB0; } while (0)
+
+// convenience macros for manipulating LEDs
+#define RED_ON()        do { PORTD |= _BV(PORTD3); } while (0)
+#define RED_OFF()       do { PORTD &= ~_BV(PORTD3); } while (0)
+#define RED_TOGGLE()    do { PIND = _BV(PORTD3); } while (0)
+#define GREEN_ON()      do { PORTC |= _BV(PORTC1); } while (0)
+#define GREEN_OFF()     do { PORTC &= ~_BV(PORTC1); } while (0)
+#define GREEN_TOGGLE()  do { PINC = _BV(PINC1); } while (0)
+
+/** Command ID of received message.
+ *
+ * This is valid after `receive_message()` returned `MSG_READY`, and before
+ * `receive_message()` or `send_message()` is called again.
+ */
+static enum CmdId cmdid;
+
+/** Length in bytes (DLC) of received message.
+ *
+ * This is valid after `receive_message()` returned `MSG_READY`, and before
+ * `receive_message()` or `send_message()` is called again.
+ */
+static uint8_t msglen = 0;
+
+/** Payload bytes of received or sent messages.
+ *
+ * This is used to buffer payload data for incoming CAN messages. It holds
+ * received message data after `receive_message()` has been called and returned
+ * `MSG_READY`. It will be overwritten the next time `receive_message()` is
+ * called.
+ */
+static uint8_t msgbuf[8];
+
+/** Payload bytes for a REPORT message.
+ *
+ * This buffer is used to hold the REPORT response bytes. Some of the values
+ * are fixed and filled in advance during C startup.
+ */
+static uint8_t rptbuf[8] = {
+    (uint8_t)(BOOTVER >> 16),
+    (uint8_t)(BOOTVER >> 8),
+    (uint8_t)BOOTVER,               // version is fixed
+    1,                              // general status set to 1
+    0,                              // report type placeholder
+    0, 0, 0                         // spare bytes
+};
+
+/** Receive message counter. Rolls over. */
+static uint8_t rxcount = 0;
 
 // Port Configuration
 //
@@ -71,6 +177,51 @@
 //   be configured as output
 //
 
+// storage for the reset cause, determined early in C init code
+// the ".noinit" tells compiler to not overwrite during bss init
+// This must be volatile to force the compiler to store it in memory.
+// Otherwise it just uses a register which gets overwritten during init,
+// before the variable can be used.
+volatile uint8_t reset_cause __attribute__ ((section (".noinit")));
+
+// Runs early in C startup
+// Reads the MCUSR to determine reset cause, stores the value and
+// clears the reg (per the data sheet)
+// This is treated as part of the C init sequence and is not a callable
+// function.
+void get_reset_cause(void) __attribute__ ((naked, used, section(".init3")));
+void get_reset_cause(void)
+{
+    reset_cause = MCUSR;
+    MCUSR = 0;
+}
+
+/** Get the assigned 4-bit board ID
+ */
+static uint8_t get_boardid(void)
+{
+    // THIS IMPLEMENTATION IS SPECIFIC TO ZEVA BMS-24 BOARDS
+    //
+    // Because the encoder bits are scattered among GPIOs and not in order
+    // on a port, there is not an easier way to do this other than to check
+    // every bit.
+    uint8_t boardid = 0;
+    if (!(PIND & _BV(PD5))) {
+        boardid += 8;
+    }
+    if (!(PIND & _BV(PD7))) {
+        boardid += 4;
+    }
+    if (!(PINB & _BV(PB2))) {
+        boardid += 2;
+    }
+    if (!(PIND & _BV(PD6))) {
+        boardid += 1;
+    }
+    return boardid;
+}
+
+/** Initialize the MCU GPIO and CAN peripheral */
 static void device_init(void)
 {
     // set GPIO directions
@@ -97,30 +248,39 @@ static void device_init(void)
     // disable all the MOBs before enabling controller
     for (uint8_t i = 0; i < 6; ++i)
     {
-        CANPAGE = i << MOBNB0;  // select MOB
-        CANCDMOB = 0;           // disable it
-        CANSTMOB = 0;           // clear all status
+        SET_CANPAGE(i);     // select MOB
+        CANCDMOB = 0;       // disable it
+        CANSTMOB = 0;       // clear all status
     }
 
     // set up MOB1 to receive
-    CANPAGE = 1 << MOBNB0;      // select MOB1
-    // set up CAN ID 2
-    CANIDT4 = 0;
-    CANIDT3 = 0;
-    CANIDT2 = 2 << 5;   // CAN address
-    CANIDT1 = 0;
-    CANIDM4 = 0;
-    CANIDM3 = 0;
-    CANIDM2 = 0xE0;     // force address match
-    CANIDM1 = 0xFF;
+    SET_CANPAGE(1);         // select MOB1
+    // set up CAN ID and mask. Using 29-bit ID
+    uint8_t boardid = get_boardid();
+    CANIDT4 = boardid << IDT4;
+    CANIDT3 = (uint8_t)(CANID >> 5) + (boardid >> 1);
+    CANIDT2 = (uint8_t)(CANID >> 13);
+    CANIDT1 = (uint8_t)(CANID >> 21);
+    CANIDM4 = (uint8_t)(CANIDMASK << IDT0);
+    CANIDM3 = (uint8_t)(CANIDMASK >> 5);
+    CANIDM2 = (uint8_t)(CANIDMASK >> 13);
+    CANIDM1 = (uint8_t)(CANIDMASK >> 21);
 
     // enable receive
-    CANCDMOB = _BV(CONMOB1) | 2;
+    CANCDMOB = _BV(CONMOB1) | _BV(IDE) | 8;
 
     // enable CAN controller
     CANGCON = _BV(ENASTB);
 }
 
+/** Send boot loader REPORT message
+ *
+ * Sends a REPORT message on the CAN bus, using the boot loader defined CAN ID
+ * for a REPORT, combined with this board ID.
+ *
+ * @param len number of bytes in payload
+ * @param pmsg point to buffer of payload  bytes
+ */
 static void send_message(uint8_t len, const uint8_t *pmsg)
 {
     // wait for MOB0 to be not busy
@@ -128,26 +288,27 @@ static void send_message(uint8_t len, const uint8_t *pmsg)
     {}
 
     // select MOB0
-    uint8_t cansave = CANPAGE;
-    CANPAGE = 0;
+    SAVE_CANPAGE;
+    SET_CANPAGE(0);
 
     // clear any lingering status
     CANSTMOB = 0;
 
-    // set up CAN ID - use ID=1, 11 bit
-    CANIDT4 = 0;
-    CANIDT3 = 0;
-    CANIDT2 = 1 << 5;   // CAN address
-    CANIDT1 = 0;
+    // set up CAN ID - 29-bit addressing
+    uint8_t boardid = get_boardid();
+    CANIDT4 = (uint8_t)(boardid << IDT4) + (uint8_t)(CMD_REPORT << IDT0);
+    CANIDT3 = (uint8_t)(CANID >> 5) + (boardid >> 1);
+    CANIDT2 = (uint8_t)(CANID >> 13);
+    CANIDT1 = (uint8_t)(CANID >> 21);
 
-    // load some bytes into the data field
+    // set the message payload
     for (uint8_t i = 0; i < len; ++i)
     {
         CANMSG = pmsg[i];
     }
 
     // enable the MOB for transmission
-    CANCDMOB = _BV(CONMOB0) | len;  // IDE=11-bit, DLC
+    CANCDMOB = _BV(CONMOB0) | _BV(IDE) | len;  // IDE=29-bit, DLC
 
     // wait for transmission complete
     while (!CANSTMOB)
@@ -156,34 +317,188 @@ static void send_message(uint8_t len, const uint8_t *pmsg)
     // disable the MOB and clear status
     CANCDMOB = 0;
     CANSTMOB = 0;
-    CANPAGE = cansave;
+    RESTORE_CANPAGE;
 }
 
-static void rx_can(void)
+/** Check for new received messages (non-blocking).
+ *
+ * If return status indicates a message is available, then the recieved message
+ * command ID is in the global `cmdid`, the payload length in `msglen`, and the
+ * payload bytes in `msgbuf`.
+ *
+ * @returns status indicating if a message is avaialble
+ */
+static enum RcvStatus receive_message(void)
 {
-    // select MOB1 for rx
-    uint8_t cansave = CANPAGE;
-    CANPAGE = 1 << MOBNB0;
+    enum RcvStatus ret = MSG_NONE;
 
-    // wait until something is received
-    while (CANEN2 & _BV(ENMOB1))
-    {}
-//    while (!(CANSTMOB & _BV(RXOK)))
-//    {}
+    // check MOB1
+    SAVE_CANPAGE;
+    SET_CANPAGE(1);
 
-    // assume we got the message
-    // clear the status
-    CANSTMOB = 0;
+    // a message has been received
+    if (CANSTMOB & _BV(RXOK)) {
+        // since we are only matching on messages with this board ID,
+        // there is no need to check the message ID, except to extract
+        // the 4-bit command field
+        cmdid = CANIDT4 >> IDT0;
 
-    // enable receive
-    CANCDMOB = _BV(CONMOB1) | 2;
-    CANPAGE = cansave;
+        msglen = CANCDMOB & 0x0f;   // get the DLC
+
+        // extract the payload
+        for (uint8_t idx = 0; idx < msglen; ++idx) {
+            msgbuf[idx] = CANMSG;
+        }
+
+        // clear the status and re-enable the receiver
+        CANSTMOB = 0;
+        CANCDMOB = _BV(CONMOB1) | _BV(IDE) | 8;     // always use 8 for DLC
+
+        ret = MSG_READY;
+    }
+
+    RESTORE_CANPAGE;
+    return ret;
 }
 
-static uint8_t msgbuf[8];
+/** Process any incoming message.
+ *
+ * This will generate report in response to incoming boot loader commands.
+ *
+ * @returns `true` if a message was processed, `false` if there was no message
+ * to process or if an error occurred processing a message
+ */
+static bool process_message(void)
+{
+    bool ret = false;
+
+    // check for available incoming message
+    enum RcvStatus status = receive_message();
+    if (status == MSG_READY) {
+        // a message is available so process according to command ID
+        rptbuf[5] = 0;              // clear spare bytes
+        rptbuf[6] = 0;
+        rptbuf[7] = ++rxcount;      // receive message counter
+
+        switch (cmdid) {
+            case CMD_PING:
+                // send a PONG report
+                rptbuf[4] = RPT_PONG;
+                send_message(8, rptbuf);
+                ret = true;
+                break;
+
+            // this is a temporary command used to test CRC calculations
+            // TODO remove before flight
+            case CMD_CRCTEST: {
+                uint16_t crc = 0;
+                for (uint8_t i = 0; i < 8; ++i) {
+                    crc = _crc16_update(crc, msgbuf[i]);
+                }
+                rptbuf[4] = RPT_CRC;
+                rptbuf[5] = crc >> 8;
+                rptbuf[6] = crc;
+                send_message(8, rptbuf);
+                ret = true;
+                break;
+            }
+
+            default:
+                // in case of unknown command, send error report
+                // with received command id
+                rptbuf[4] = RPT_ERR;
+                rptbuf[5] = cmdid;
+                send_message(8, rptbuf);
+                break;
+        }
+    }
+
+    return ret;
+}
+
+/** Check app integrity and start it
+ *
+ * Checks the application in flash and if it is okay then it start it.
+ * Otherwise it lets the WDT expire which will reset the MCU.
+ */
+static void attempt_app_start(void)
+{
+    static void(*swreset)(void) = 0;
+
+    // TODO perform CRC check on app
+
+    // TODO disable the watchdog timer
+    // set all the IO back to the reset state
+    DDRB = 0;
+    DDRC = 0;
+    DDRD = 0;
+    PORTB = 0;
+    PORTC = 0;
+    PORTD = 0;
+    // reset the CAN controller (disables it)
+    CANGCON = _BV(SWRES);
+    // jump to application
+    swreset();
+}
+
+int main(void)
+{
+    // TODO start WDT
+
+    device_init();
+
+    // turn on the red LED for 1 second to indicate in boot loader
+    RED_ON();
+
+    // determine reset cause and timeout duration
+    uint16_t timeout;
+    if (reset_cause & _BV(WDRF)) {
+        // if reset was due to WDT, either the app is trying to start the BL,
+        // or the boot loader is resetting itself due to error or timeout
+        // In this case using the long timeout
+        timeout = LONG_TIMEOUT;
+    } else {
+        // otherwise we have normal reboot so use short timeout
+        timeout = SHORT_TIMEOUT;
+    }
+
+    // run forever in this loop until there is a command to reboot or
+    // the timeout expires
+    uint8_t blinkcount = 100;
+    for (;;) {
+        if (process_message()) {
+            // message was processed, reset timeout
+            timeout = LONG_TIMEOUT;
+
+        } else {
+            // no message was processed, update timeout counter
+            _delay_ms(1);
+
+            // blink the LED
+            if (blinkcount-- == 0) {
+                blinkcount = 100;
+                RED_TOGGLE();
+            }
+
+            // check for timeout
+            // if it times out, attempt to run application
+            if (timeout-- == 0) {
+                timeout = SHORT_TIMEOUT;
+                continue;  // stay in boot loader for now
+                attempt_app_start();
+                // at this point either the app is started or there is
+                // a reboot. It should not come back here.
+                for(;;)     // halt but dont catch fire
+                {}
+            }
+        }
+    }
+
+    return 0;
+}
 
 #if 0
-static void debug_dump(void)
+static void debug_dump(uint8_t sts)
 {
     msgbuf[0] = CANGSTA;
     msgbuf[1] = CANGIT;
@@ -198,38 +513,8 @@ static void debug_dump(void)
     CANPAGE = cansave;
 
     msgbuf[6] = 0;
-    msgbuf[7] = 0;
+    msgbuf[7] = sts;
 
     send_message(8, msgbuf);
 }
 #endif
-
-int main(void)
-{
-    uint8_t rxcount = 0;
-
-    device_init();
-
-    for (;;)
-    {
-        // turn on red LED
-        PORTC &= ~_BV(PORTC1);  // green off
-        PORTD |= _BV(PORTD3);
-
-        // wait for a message
-        rx_can();
-
-        // turn off red LED and turn on Green
-        PORTD &= ~_BV(PORTD3);
-        PORTC |= _BV(PORTC1);
-
-        // send a reply
-        msgbuf[0] = ++rxcount;
-        send_message(1, msgbuf);
-
-        // wait a bit then start over
-        _delay_ms(1000);
-    }
-
-    return 0;
-}
