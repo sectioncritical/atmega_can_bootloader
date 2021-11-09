@@ -25,7 +25,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <util/crc16.h>
 
 #define F_CPU 8000000UL
@@ -194,6 +197,7 @@ void get_reset_cause(void)
 {
     reset_cause = MCUSR;
     MCUSR = 0;
+    wdt_disable();
 }
 
 /** Get the assigned 4-bit board ID
@@ -419,36 +423,43 @@ static bool process_message(void)
 /** Check app integrity and start it
  *
  * Checks the application in flash and if it is okay then it start it.
- * Otherwise it lets the WDT expire which will reset the MCU.
+ * Otherwise it jusr returns which means the app didnt start.
  */
-static void attempt_app_start(void)
+static void  attempt_app_start(void)
 {
     static void(*swreset)(void) = 0;
 
     // TODO perform CRC check on app
+    if (false) {
+        // disable WDT
+        MCUSR = 0;      // not sure if this is required
+        wdt_disable();
 
-    // TODO disable the watchdog timer
-    // set all the IO back to the reset state
-    DDRB = 0;
-    DDRC = 0;
-    DDRD = 0;
-    PORTB = 0;
-    PORTC = 0;
-    PORTD = 0;
-    // reset the CAN controller (disables it)
-    CANGCON = _BV(SWRES);
-    // jump to application
-    swreset();
+        // set all the IO back to the reset state
+        DDRB = 0;
+        DDRC = 0;
+        DDRD = 0;
+        PORTB = 0;
+        PORTC = 0;
+        PORTD = 0;
+
+        // reset the CAN controller (disables it)
+        CANGCON = _BV(SWRES);
+        // jump to application
+        swreset();
+    }
 }
 
 int main(void)
 {
-    // TODO start WDT
-
+    cli();
     device_init();
 
     // turn on the red LED for 1 second to indicate in boot loader
     RED_ON();
+
+    // enable the watchdog from this point
+    wdt_enable(WDTO_1S);
 
     // determine reset cause and timeout duration
     uint16_t timeout;
@@ -466,6 +477,7 @@ int main(void)
     // the timeout expires
     uint8_t blinkcount = 100;
     for (;;) {
+        wdt_reset();
         if (process_message()) {
             // message was processed, reset timeout
             timeout = LONG_TIMEOUT;
@@ -484,10 +496,11 @@ int main(void)
             // if it times out, attempt to run application
             if (timeout-- == 0) {
                 timeout = SHORT_TIMEOUT;
-                continue;  // stay in boot loader for now
+
                 attempt_app_start();
-                // at this point either the app is started or there is
-                // a reboot. It should not come back here.
+                // if the above returns, it means the app didnt start
+                // in this case spin in a loop here which will allow the
+                // watchdog to timeout and reset the MCU
                 for(;;)     // halt but dont catch fire
                 {}
             }
