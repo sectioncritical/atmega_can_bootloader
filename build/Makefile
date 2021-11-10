@@ -59,9 +59,21 @@ AVRDUDE_BAUD=19200
 # not needed for usbtiny programmer # -P$(AVRDUDE_PORT) -b(AVRDUDE_BAUD)
 AVRDUDE_CMD=$(AVRDUDE) -v -p $(AVRDUDE_DEVICE) -C $(AVRDUDE_CONF) -c $(AVRDUDE_PROGRAMMER)
 
+# MEMORY LAYOUT (Assuming ATMega16M1)
+#
+# Allocated 2K for the boot loader. This leaves 14K for application.
+# (all addresses are byte addresses - note datasheet uses word addresses a lot)
+#
+# All flash:   0x0000 - 0x3FFF (0x4000/16384)
+# App memory:  0x0000 - 0x37FF (0x3800/14336)
+# Boot memory: 0x3800 - 0x3FFF (0x0800/2048)
+#
+# Note that the NRWW section starts at 0x3000
+#
 # boot loader start address
-# TODO set real BL address
-START_ADDRESS?=0
+# this relies on correct fuse setting
+#
+START_ADDRESS?=0x3800
 
 OUT=obj
 SRC=../src
@@ -71,11 +83,15 @@ OBJS=$(OUT)/main.o
 # device remains unlocked
 LOCKFUSE=0xff
 
-# device remains unlocked
-LOCKFUSE=0xff
-
-# enable SPI memory access, EESAVE (dont erase eeprom), minimal boot size
-HFUSE=0xd7
+# leave reset enabled   : 1xxx xxxx
+# debugwire disabled    : x1xx xxxx
+# SPI prog enabled      : xx0x xxxx
+# WDT not enabled       : xxx1 xxxx
+# dont erase eeprom     : xxxx 0xxx
+# boot size 2048        : xxxx x01x
+# bootloader reset      : xxxx xxx0
+# result                : 1101 0010 = 0xD2
+HFUSE=0xd2
 
 # disable /8, external osc, longer startup time
 LFUSE=0xdf
@@ -138,11 +154,11 @@ dumpflash:
 	$(AVRDUDE_CMD) -U flash:r:flash_dump.bin:r
 
 .PHONY: fuses
-fuses: venv
+fuses:
 	$(AVRDUDE_CMD) -Ulock:w:$(LOCKFUSE):m -Uhfuse:w:$(HFUSE):m -Ulfuse:w:$(LFUSE):m -Uefuse:w:$(EFUSE):m
 
 .PHONY: erase
-erase: venv
+erase:
 	$(AVRDUDE_CMD) -e
 
 .PHONY: avrping
