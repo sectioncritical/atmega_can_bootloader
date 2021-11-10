@@ -367,57 +367,45 @@ static enum RcvStatus receive_message(void)
 
 /** Process any incoming message.
  *
- * This will generate report in response to incoming boot loader commands.
- *
- * @returns `true` if a message was processed, `false` if there was no message
- * to process or if an error occurred processing a message
+ * This will perform actions based on the incoming command, and then generate
+ * a report message in response to the processed command. This function always
+ * populates `rptbuf[]` with the appropriate report payload, even if the
+ * incoming command message is an error. Therefore, after this function
+ * returns, a report is ready to send with `send_message(8, rptbuf)`.
  */
-static bool process_message(void)
+static void process_message(void)
 {
-    bool ret = false;
+    // a message is available so process according to command ID
+    rptbuf[5] = 0;              // clear spare bytes
+    rptbuf[6] = 0;
+    rptbuf[7] = ++rxcount;      // receive message counter
 
-    // check for available incoming message
-    enum RcvStatus status = receive_message();
-    if (status == MSG_READY) {
-        // a message is available so process according to command ID
-        rptbuf[5] = 0;              // clear spare bytes
-        rptbuf[6] = 0;
-        rptbuf[7] = ++rxcount;      // receive message counter
+    switch (cmdid) {
+        case CMD_PING:
+            // send a PONG report
+            rptbuf[4] = RPT_PONG;
+            break;
 
-        switch (cmdid) {
-            case CMD_PING:
-                // send a PONG report
-                rptbuf[4] = RPT_PONG;
-                send_message(8, rptbuf);
-                ret = true;
-                break;
-
-            // this is a temporary command used to test CRC calculations
-            // TODO remove before flight
-            case CMD_CRCTEST: {
-                uint16_t crc = 0;
-                for (uint8_t i = 0; i < 8; ++i) {
-                    crc = _crc16_update(crc, msgbuf[i]);
-                }
-                rptbuf[4] = RPT_CRC;
-                rptbuf[5] = crc >> 8;
-                rptbuf[6] = crc;
-                send_message(8, rptbuf);
-                ret = true;
-                break;
+        // this is a temporary command used to test CRC calculations
+        // TODO remove before flight
+        case CMD_CRCTEST: {
+            uint16_t crc = 0;
+            for (uint8_t i = 0; i < 8; ++i) {
+                crc = _crc16_update(crc, msgbuf[i]);
             }
-
-            default:
-                // in case of unknown command, send error report
-                // with received command id
-                rptbuf[4] = RPT_ERR;
-                rptbuf[5] = cmdid;
-                send_message(8, rptbuf);
-                break;
+            rptbuf[4] = RPT_CRC;
+            rptbuf[5] = crc >> 8;
+            rptbuf[6] = crc;
+            break;
         }
-    }
 
-    return ret;
+        default:
+            // in case of unknown command, send error report
+            // with received command id
+            rptbuf[4] = RPT_ERR;
+            rptbuf[5] = cmdid;
+            break;
+    }
 }
 
 /** Check app integrity and start it
@@ -478,7 +466,11 @@ int main(void)
     uint8_t blinkcount = 100;
     for (;;) {
         wdt_reset();
-        if (process_message()) {
+        // check for available incoming message
+        enum RcvStatus status = receive_message();
+        if (status == MSG_READY) {
+            process_message();
+            send_message(8, rptbuf);
             // message was processed, reset timeout
             timeout = LONG_TIMEOUT;
 
