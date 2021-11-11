@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright 2020 Joseph Kroesche
+# Copyright 2021 Joseph Kroesche
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

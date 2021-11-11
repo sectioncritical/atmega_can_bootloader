@@ -180,19 +180,28 @@ static uint8_t rxcount = 0;
 //   be configured as output
 //
 
+// if unit testing, dont use section attributes on the special
+// variable and function below. these only have meaning on actual
+// AVR target and not on host building a unit test
+#ifndef UNIT_TEST
+#define ATTRIBUTE(a) __attribute__ (a)
+#else
+#define ATTRIBUTE(a)
+#endif
+
 // storage for the reset cause, determined early in C init code
 // the ".noinit" tells compiler to not overwrite during bss init
 // This must be volatile to force the compiler to store it in memory.
 // Otherwise it just uses a register which gets overwritten during init,
 // before the variable can be used.
-volatile uint8_t reset_cause __attribute__ ((section (".noinit")));
+volatile uint8_t reset_cause ATTRIBUTE((section (".noinit")));
 
 // Runs early in C startup
 // Reads the MCUSR to determine reset cause, stores the value and
 // clears the reg (per the data sheet)
 // This is treated as part of the C init sequence and is not a callable
 // function.
-void get_reset_cause(void) __attribute__ ((naked, used, section(".init3")));
+void get_reset_cause(void) ATTRIBUTE((naked, used, section(".init3")));
 void get_reset_cause(void)
 {
     reset_cause = MCUSR;
@@ -438,7 +447,13 @@ static void  attempt_app_start(void)
     }
 }
 
-int main(void)
+// make main callable from a unit test
+#ifdef UNIT_TEST
+#define MAIN app_main
+#else
+#define MAIN main
+#endif
+int MAIN(void)
 {
     cli();
     device_init();
