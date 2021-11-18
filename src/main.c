@@ -77,7 +77,6 @@ enum CmdId {
     CMD_DATA,       ///< Send 8 bytes of program data
     CMD_STOP,       ///< Finish program load and provide CRC
     CMD_REPORT,     ///< Reply from boot loader to all commands
-    CMD_CRCTEST     // temporary for debug
 };
 
 /** Boot loader report definitions. */
@@ -87,8 +86,7 @@ enum RptId {
     RPT_END,        ///< All expected DATA blocks have been received
     RPT_DONE,       ///< Acknowledge completion of load success or failure
     RPT_BOOT,       ///< Acknowledge imminent reboot (not used)
-    RPT_ERR,        ///< TBD error condition
-    RPT_CRC,        // temporary command for debug
+    RPT_ERR,        ///< Bad command or other error condition
 };
 
 /** Receive message status. */
@@ -99,11 +97,15 @@ enum RcvStatus {
 };
 
 // convenience macros for manipulating CAN page register
+// some code space could be saved by not saving and restoring CANPAGE in
+// various places. The code is all single thread with no interrupts, so it is
+// probably not necessary to save/restore the CANPAGE where it is used
 #define SAVE_CANPAGE uint8_t _cansave = CANPAGE
 #define RESTORE_CANPAGE CANPAGE = _cansave
 #define SET_CANPAGE(p) do { CANPAGE = (p) << MOBNB0; } while (0)
 
 // convenience macros for manipulating LED used for signalling state
+// some code space could be saved by not using the LED
 // PORTING: change to match the GPIO used for the LED, or define to void
 // if no LED is used
 #define LED_ON()        do { PORTD |= _BV(PORTD3); } while (0)
@@ -411,7 +413,7 @@ static void process_message(void)
 
     // a message is available so process according to command ID
     rptbuf[5] = 0;              // clear spare bytes
-    rptbuf[6] = 0;
+    rptbuf[6] = 0;              // could save code by not zeroing spares
     rptbuf[7] = ++rxcount;      // receive message counter
 
     switch (cmdid) {
@@ -419,19 +421,6 @@ static void process_message(void)
             // send a PONG report
             rptbuf[4] = RPT_PONG;
             break;
-
-        // this is a temporary command used to test CRC calculations
-        // TODO remove before flight
-        case CMD_CRCTEST: {
-            uint16_t crc = 0;
-            for (uint8_t i = 0; i < 8; ++i) {
-                crc = _crc16_update(crc, msgbuf[i]);
-            }
-            rptbuf[4] = RPT_CRC;
-            rptbuf[5] = crc >> 8;
-            rptbuf[6] = crc;
-            break;
-        }
 
         case CMD_START:
             running_crc = 0;
@@ -612,25 +601,3 @@ int MAIN(void)
 
     return 0;
 }
-
-#if 0
-static void debug_dump(uint8_t sts)
-{
-    msgbuf[0] = CANGSTA;
-    msgbuf[1] = CANGIT;
-    msgbuf[2] = CANEN2;
-
-    uint8_t cansave = CANPAGE;
-    CANPAGE = 1 << MOBNB0;
-    msgbuf[3] = CANPAGE;
-
-    msgbuf[4] = CANSTMOB;
-    msgbuf[5] = CANCDMOB;
-    CANPAGE = cansave;
-
-    msgbuf[6] = 0;
-    msgbuf[7] = sts;
-
-    send_message(8, msgbuf);
-}
-#endif
