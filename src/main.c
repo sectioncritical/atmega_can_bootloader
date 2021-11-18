@@ -26,11 +26,17 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <avr/boot.h>
+#include <avr/eeprom.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <avr/wdt.h>
 #include <util/crc16.h>
 
+// search for PORTING, for notes about possible changes to port the boot loader
+
+// PORTING: set the frequency to match the hardware setup
 #define F_CPU 8000000UL
 #include <util/delay.h>
 
@@ -44,8 +50,14 @@
 
 // define timeouts used when waiting for messages
 // units are milliseconds
-#define SHORT_TIMEOUT 1000U
-#define LONG_TIMEOUT 10000U
+#define BOOT_TIMEOUT 2000U
+#define ACTIVITY_TIMEOUT 10000U
+
+// define EEPROM locations for image info
+// this is 2 words (4 bytes total) at the end of the eeprom space
+// Use the end so that the app can use eeprom from the start
+#define EEP_APP_LEN ((uint16_t *)(E2END - 3))
+#define EEP_APP_CRC ((uint16_t *)(E2END - 1))
 
 // BOOTVER should be defined when firmware is built
 // a placeholder is used if it is not defined. The placeholder means
@@ -60,12 +72,12 @@ static const uint8_t version[3] = {
 /** Boot loader command definitions. */
 enum CmdId {
     CMD_PING = 0,   ///< Check for boot loader device presence
-    CMD_REBOOT,     ///< Cause the target to reset
+    CMD_REBOOT,     ///< Cause the target to reset (not implemented)
     CMD_START,      ///< Start a program load
     CMD_DATA,       ///< Send 8 bytes of program data
     CMD_STOP,       ///< Finish program load and provide CRC
     CMD_REPORT,     ///< Reply from boot loader to all commands
-    CMD_CRCTEST
+    CMD_CRCTEST     // temporary for debug
 };
 
 /** Boot loader report definitions. */
@@ -74,9 +86,9 @@ enum RptId {
     RPT_READY,      ///< Ready for next DATA block
     RPT_END,        ///< All expected DATA blocks have been received
     RPT_DONE,       ///< Acknowledge completion of load success or failure
-    RPT_BOOT,       ///< Acknowledge imminent reboot
-    RPT_CRC,
-    RPT_ERR         ///< TBD error condition
+    RPT_BOOT,       ///< Acknowledge imminent reboot (not used)
+    RPT_ERR,        ///< TBD error condition
+    RPT_CRC,        // temporary command for debug
 };
 
 /** Receive message status. */
@@ -91,13 +103,12 @@ enum RcvStatus {
 #define RESTORE_CANPAGE CANPAGE = _cansave
 #define SET_CANPAGE(p) do { CANPAGE = (p) << MOBNB0; } while (0)
 
-// convenience macros for manipulating LEDs
-#define RED_ON()        do { PORTD |= _BV(PORTD3); } while (0)
-#define RED_OFF()       do { PORTD &= ~_BV(PORTD3); } while (0)
-#define RED_TOGGLE()    do { PIND = _BV(PORTD3); } while (0)
-#define GREEN_ON()      do { PORTC |= _BV(PORTC1); } while (0)
-#define GREEN_OFF()     do { PORTC &= ~_BV(PORTC1); } while (0)
-#define GREEN_TOGGLE()  do { PINC = _BV(PINC1); } while (0)
+// convenience macros for manipulating LED used for signalling state
+// PORTING: change to match the GPIO used for the LED, or define to void
+// if no LED is used
+#define LED_ON()        do { PORTD |= _BV(PORTD3); } while (0)
+#define LED_OFF()       do { PORTD &= ~_BV(PORTD3); } while (0)
+#define LED_TOGGLE()    do { PIND = _BV(PORTD3); } while (0)
 
 /** Command ID of received message.
  *
@@ -210,6 +221,9 @@ void get_reset_cause(void)
 }
 
 /** Get the assigned 4-bit board ID
+ *
+ * PORTING: this function can be changed to support other board ID schemes.
+ * For example, the board ID could be stored in EEPROM.
  */
 static uint8_t get_boardid(void)
 {
@@ -237,6 +251,8 @@ static uint8_t get_boardid(void)
 /** Initialize the MCU GPIO and CAN peripheral */
 static void device_init(void)
 {
+    // PORTING: set the GPIO configurations here to match the hardware
+    //
     // set GPIO directions
     DDRB = 0;                       // LTC outputs not enabled for boot loader
     DDRC = _BV(DDC1) | _BV(DDC2);   // CAN TX and green LED
@@ -253,6 +269,10 @@ static void device_init(void)
     // a delay is needed after reset - not sure how long is required
     _delay_ms(1);
 
+    // PORTING: the CAN timing register values need to be adjusted to
+    // match the clock frequency, if not 8 MHz. Also the CAN bus rate can be
+    // changed here.
+    //
     // CAN timing for 250 khz, TQ=0.5, taken from data sheet table, 8MHz clk
     CANBT1 = 0x06;
     CANBT2 = 0x04;
@@ -354,7 +374,7 @@ static enum RcvStatus receive_message(void)
         // since we are only matching on messages with this board ID,
         // there is no need to check the message ID, except to extract
         // the 4-bit command field
-        cmdid = CANIDT4 >> IDT0;
+        cmdid = (CANIDT4 >> IDT0) & 0x0F;
 
         msglen = CANCDMOB & 0x0f;   // get the DLC
 
@@ -384,6 +404,11 @@ static enum RcvStatus receive_message(void)
  */
 static void process_message(void)
 {
+    // ongoing load state
+    static uint16_t loadaddr = 0;   // byte address of current write
+    static uint16_t loadlen = 0;    // load len from START command
+    static uint16_t running_crc = 0;
+
     // a message is available so process according to command ID
     rptbuf[5] = 0;              // clear spare bytes
     rptbuf[6] = 0;
@@ -408,6 +433,70 @@ static void process_message(void)
             break;
         }
 
+        case CMD_START:
+            running_crc = 0;
+            loadaddr = 0;
+            loadlen = msgbuf[0] + (msgbuf[1] << 8);
+            rptbuf[4] = RPT_READY;
+            break;
+
+        case CMD_DATA:
+            // make sure we can load another block
+            if (loadaddr < loadlen) {
+                // write 8 bytes to the page buffer
+                for (uint8_t i = 0; i < 8; i += 2) {
+                    uint16_t w = msgbuf[i] + (msgbuf[i+1] << 8);
+                    boot_page_fill_safe(loadaddr + i, w);
+                    // accumulate crc
+                    running_crc = _crc16_update(running_crc, msgbuf[i]);
+                    running_crc = _crc16_update(running_crc, msgbuf[i+1]);
+                }
+                loadaddr += 8;  // advance to next 8-byte block
+
+                // if at the end of a page, or end of load, burn the block
+                if ((loadaddr >= loadlen)
+                || ((loadaddr % SPM_PAGESIZE) == 0)) {
+                    uint16_t page = loadaddr - 1;   // previous page
+                    boot_page_erase_safe(page);     // erase the page
+                    boot_page_write_safe(page);     // write the page
+                    boot_spm_busy_wait();           // wait for done
+                    boot_rww_enable();              // enable app flash
+
+                    // a flash page has now been programmed
+                    // determine response based on end of load vs new page
+                    rptbuf[4] = (loadaddr < loadlen) ? RPT_READY : RPT_END;
+                }
+
+            } else {
+                // load state is not valid so signal an error
+                rptbuf[4] = RPT_ERR;
+            }
+            break;
+
+        case CMD_STOP:
+        {
+            // extract verification CRC from message
+            uint16_t verify_crc = msgbuf[0] + (msgbuf[1] << 8);
+
+            if (verify_crc == running_crc) {
+                // crc matches, so save CRC and image length in eeprom
+                rptbuf[5] = 1;  // set load status to OK
+
+                // update the image length and CRC in eeprom
+                eeprom_update_word(EEP_APP_LEN, loadlen);
+                eeprom_update_word(EEP_APP_CRC, running_crc);
+                eeprom_busy_wait(); // make sure write done before continue
+
+            } else {
+                // crc doesnt match. dont save the crc or image length
+                // this will cause app start to fail at boot
+                rptbuf[5] = 0;  // load error indication
+            }
+
+            rptbuf[4] = RPT_DONE;
+            break;
+        }
+
         default:
             // in case of unknown command, send error report
             // with received command id
@@ -426,8 +515,16 @@ static void  attempt_app_start(void)
 {
     static void(*swreset)(void) = 0;
 
-    // TODO perform CRC check on app
-    if (false) {
+    // compute the CRC over the stored image in flash
+    uint16_t len = eeprom_read_word(EEP_APP_LEN);   // length of image
+    uint16_t crc = 0;
+    for (uint16_t addr = 0; addr < len; ++addr) {
+        crc = _crc16_update(crc, pgm_read_byte(addr));
+    }
+    uint16_t stored_crc = eeprom_read_word(EEP_APP_CRC);
+
+    // if the computed matches the stored, then start the app
+    if (crc == stored_crc) {
         // disable WDT
         MCUSR = 0;      // not sure if this is required
         wdt_disable();
@@ -458,9 +555,6 @@ int MAIN(void)
     cli();
     device_init();
 
-    // turn on the red LED for 1 second to indicate in boot loader
-    RED_ON();
-
     // enable the watchdog from this point
     wdt_enable(WDTO_1S);
 
@@ -470,15 +564,15 @@ int MAIN(void)
         // if reset was due to WDT, either the app is trying to start the BL,
         // or the boot loader is resetting itself due to error or timeout
         // In this case using the long timeout
-        timeout = LONG_TIMEOUT;
+        timeout = ACTIVITY_TIMEOUT;
     } else {
         // otherwise we have normal reboot so use short timeout
-        timeout = SHORT_TIMEOUT;
+        timeout = BOOT_TIMEOUT;
     }
 
     // run forever in this loop until there is a command to reboot or
     // the timeout expires
-    uint8_t blinkcount = 100;
+    uint8_t blinkcount = 50;
     for (;;) {
         wdt_reset();
         // check for available incoming message
@@ -487,7 +581,7 @@ int MAIN(void)
             process_message();
             send_message(8, rptbuf);
             // message was processed, reset timeout
-            timeout = LONG_TIMEOUT;
+            timeout = ACTIVITY_TIMEOUT;
 
         } else {
             // no message was processed, update timeout counter
@@ -495,21 +589,23 @@ int MAIN(void)
 
             // blink the LED
             if (blinkcount-- == 0) {
-                blinkcount = 100;
-                RED_TOGGLE();
+                blinkcount = 50;
+                LED_TOGGLE();
             }
 
             // check for timeout
             // if it times out, attempt to run application
             if (timeout-- == 0) {
-                timeout = SHORT_TIMEOUT;
-
+                LED_ON();   // leave LED on while starting app
                 attempt_app_start();
                 // if the above returns, it means the app didnt start
-                // in this case spin in a loop here which will allow the
-                // watchdog to timeout and reset the MCU
-                for(;;)     // halt but dont catch fire
-                {}
+                // if main() returns, the AVR runtime library provides
+                // a forever loop. This will allow the watchdog to timeout
+                // and reset the MCU.
+                // In the case of unit test, it allows "app_main()" to be
+                // called from the unit test, and it can return to the unit
+                // test calling test case
+                break;
             }
         }
     }

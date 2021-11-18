@@ -3,9 +3,9 @@ skinparam shadowing false
 
 start
 
-if (Reset Type) then (POR/HW))
+if (Reset Type) then (POR/HW)
     :set timeout=Boot;
-else (App)
+else (WDT/(App))
     :set timeout=Activity;
 endif
 

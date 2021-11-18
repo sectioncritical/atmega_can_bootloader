@@ -177,4 +177,8 @@ extern struct reg8 CANIDM4_reg8;
 extern struct reg8 CANMSG_reg8;
 #define CANMSG (*CANMSG_reg8.eval(&CANMSG_reg8))
 
+#define SPM_PAGESIZE (128)
+#define FLASHEND (0x3FFF)
+#define E2END (0x1FF)
+
 #endif

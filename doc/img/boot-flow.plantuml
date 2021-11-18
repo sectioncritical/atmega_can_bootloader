@@ -20,8 +20,9 @@ T -> H : REPORT (PONG)
 
 newpage Load Program
 
-H -> T : START (id=2,len=18)
-note right: Start load of\n18 byte program
+note across: image is 18 bytes, pad to 24
+H -> T : START (id=2,len=18+6=24)
+note right: Start load of\n24 byte program\n(18+6 pad)
 T -> H : REPORT (READY)
 
 H -> T : DATA (8 bytes)
@@ -31,7 +32,7 @@ H -> T : DATA (8 bytes)
 note right: next 8 bytes
 T -> H : REPORT (READY)
 H -> T : DATA (2 bytes+6 pad bytes)
-note right: final 2 bytes
+note right: final 2 bytes\nplus 6 pad bytes
 T -> H : REPORT (END)
 
 == Load was successful ==
@@ -44,8 +45,9 @@ T -> H : REPORT(DONE,error)
 
 newpage Exit Boot Loader
 
-H -> T : RESTART
-T -> H : REPORT(BOOT)
+note across: activity or boot\ntimeout expires
+...timeout...
+T -> T : reboots
 note over T: target reboots
 
 @enduml

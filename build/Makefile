@@ -153,6 +153,11 @@ program: $(HEXFILE)
 dumpflash:
 	$(AVRDUDE_CMD) -U flash:r:flash_dump.bin:r
 
+# dump the eeprom contents into a file
+.PHONY: dumpeep
+dumpeep:
+	$(AVRDUDE_CMD) -U eeprom:r:eeprom_dump.bin:r
+
 .PHONY: fuses
 fuses:
 	$(AVRDUDE_CMD) -Ulock:w:$(LOCKFUSE):m -Uhfuse:w:$(HFUSE):m -Ulfuse:w:$(LFUSE):m -Uefuse:w:$(EFUSE):m

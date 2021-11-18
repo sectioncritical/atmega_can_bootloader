@@ -28,8 +28,11 @@ SRCS+=unity/src/unity.c
 SRCS+=unity/extras/fixture/src/unity_fixture.c
 SRCS+=src/avr/wdt.c
 SRCS+=src/avr/io.c
+SRCS+=src/avr/boot.c
+SRCS+=src/avr/eeprom.c
 SRCS+=src/util/delay.c
-SRCS+=src/util/crc16.c
+SRCS+=src/util/crc16avr.c
+SRCS+=src/libcrc/crc16.c
 
 INCS=-Iunity/src -Iunity/extras/fixture/src -Isrc -I../src
 
