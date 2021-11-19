@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ghcr.io/kroesche/avr-build
+    container: ghcr.io/sectioncritical/avr-build
     steps:
       - run: echo "Hello"
       - run: gcc --version
