@@ -1,6 +1,6 @@
 name: build-bootloader
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -20,4 +20,9 @@ jobs:
         run: make -C build clean
       - name: build
         run: make -C build
+      - name: artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: obj/canboot.hex
 
