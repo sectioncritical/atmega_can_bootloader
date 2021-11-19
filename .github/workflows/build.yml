@@ -13,6 +13,11 @@ jobs:
     steps:
       - run: whoami
       - run: pwd
+      - name: checkout
+        uses: actions/checkout@v2
       - run: ls -al
-      - uses: actions/checkout@v2
-      - run: ls -al
+      - name: clean
+        run: make -C build clean
+      - name: build
+        run: make -C build
+
