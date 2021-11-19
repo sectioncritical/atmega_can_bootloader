@@ -1,0 +1,11 @@
+name: build-bootloader
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/kroesche/avr-build
+    steps:
+      run: echo "Hello"
+      run: gcc --version
