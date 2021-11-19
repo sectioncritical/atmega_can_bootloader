@@ -1,3 +1,5 @@
+[![build-bootloader](https://github.com/sectioncritical/atmega_can_bootloader/actions/workflows/build.yml/badge.svg)](https://github.com/sectioncritical/atmega_can_bootloader/actions/workflows/build.yml)
+
 README
 ======
 
