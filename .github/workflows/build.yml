@@ -9,7 +9,7 @@ jobs:
       image: ghcr.io/sectioncritical/avr-build
       credentials:
         username: kroesche
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.CONTAINER_ACCESS }}
     steps:
       - run: echo "Hello"
       - run: gcc --version
