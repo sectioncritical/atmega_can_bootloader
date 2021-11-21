@@ -29,6 +29,9 @@ PROGNAME=canboot
 
 TARGET_MCU=atmega16m1
 
+# development version, can be overridden for production release
+VERSION?=99.99.99
+
 # AVRDUDE ports
 # you will need to override these for your system. The easiest thing to do
 # is to set an environment variable and then you wont need to type on command
@@ -130,7 +133,9 @@ $(OUT):
 	mkdir -p $(OUT)
 
 $(OUT)/%.o: $(SRC)/%.c | $(OUT)
-	$(CC) $(CFLAGS) -o $@  -c $<
+	VERHEX=$$(python3 version2hex.py $(VERSION)); \
+	echo $$VERHEX; \
+	$(CC) $(CFLAGS) -DBOOTVER=$$VERHEX -o $@  -c $<
 
 $(ELFFILE): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBFLAGS)
