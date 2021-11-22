@@ -215,7 +215,7 @@ volatile uint8_t reset_cause ATTRIBUTE((section (".noinit")));
 // This is treated as part of the C init sequence and is not a callable
 // function.
 void get_reset_cause(void) ATTRIBUTE((naked, used, section(".init3")));
-void get_reset_cause(void)
+void get_reset_cause(void)  // cppcheck-suppress[unusedFunction]
 {
     reset_cause = MCUSR;
     MCUSR = 0;
@@ -529,7 +529,7 @@ static void  attempt_app_start(void)
         // reset the CAN controller (disables it)
         CANGCON = _BV(SWRES);
         // jump to application
-        swreset();
+        swreset();  // cppcheck-suppress[nullPointer]
     }
 }
 

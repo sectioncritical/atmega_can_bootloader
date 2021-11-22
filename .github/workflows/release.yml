@@ -1,17 +1,12 @@
-name: build
+name: release
 
 on:
   push:
-    branches:
-      - main
-      - 'feature/**'
-      - 'release/**'
-  pull_request:
-    branches:
-      - main
+    tags:
+      - v*
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/sectioncritical/avr-build
@@ -24,14 +19,21 @@ jobs:
       - name: clean
         run: make -C build clean
       - name: build
-        run: make -C build
+        run: make -C build VERSION=${GITHUB_REF#refs/tags/}
       - name: check
         run: make -C build check
       - name: package
-        run: make -C build package
+        run: make -C build package VERSION=${GITHUB_REF#refs/tags/v}
       - name: artifacts
         uses: actions/upload-artifact@v2
         with:
           name: binaries
           path: |
             build/canboot-*.tar.gz
+
+# tools for releases
+# python git-changelog to generate changelog
+# python-semantic-release
+# python package named conventional
+#
+# ncipollo/release-action

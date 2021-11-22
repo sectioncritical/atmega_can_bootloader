@@ -115,11 +115,16 @@ help:
 	@echo ""
 	@echo "all/(default)    - build the boot loader hex file (BAUD)"
 	@echo "clean            - delete all build products"
+	@echo ""
 	@echo "program          - program boot loader to target using programmer"
 	@echo "fuses            - program the target fuses (new device)"
 	@echo "dumpflash        - save flash contents to binary file"
 	@echo "avrping          - programmer probe the target"
 	@echo "erase            - erase the device using programmer (not usual)"
+	@echo ""
+	@echo "check            - run code checker"
+	@echo ""
+	@echo "package          - create versioned package archive"
 	@echo ""
 
 CC=avr-gcc
@@ -134,7 +139,6 @@ $(OUT):
 
 $(OUT)/%.o: $(SRC)/%.c | $(OUT)
 	VERHEX=$$(python3 version2hex.py $(VERSION)); \
-	echo $$VERHEX; \
 	$(CC) $(CFLAGS) -DBOOTVER=$$VERHEX -o $@  -c $<
 
 $(ELFFILE): $(OBJS)
@@ -174,3 +178,19 @@ erase:
 .PHONY: avrping
 avrping:
 	$(AVRDUDE_CMD)
+
+# run cppcheck with plain output - useful for local running, and no reports
+.PHONY: check
+check:
+	cppcheck --std=c99 --platform=avr8 --enable=all -UUNIT_TEST --suppress=missingIncludeSystem --inline-suppr -v ../src/main.c
+
+.PHONY: package
+package: $(HEXFILE)
+	rm -rf package
+	mkdir -p package
+	cp $(HEXFILE) package/.
+	cp $(ELFFILE) package/.
+	cp $(OUT)/$(PROGNAME).map package/.
+	PKGNAME=$(PROGNAME)-$(VERSION); rm -rf $$PKGNAME; \
+	mv package $$PKGNAME; \
+	tar -zcvf $$PKGNAME.tar.gz $$PKGNAME/*
