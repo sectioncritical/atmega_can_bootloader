@@ -4,5 +4,8 @@ Makefile text
 *.md text diff=markdown
 *.svg text
 
+*.txt text
+*.py text
+
 *.c text diff=cpp
 *.h text diff=cpp
