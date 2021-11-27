@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# convert a version string like "v1.2.3" or "1.2.3" to hex formatting
+# expected for the boot loader build, like "0x010203"
+
 import sys
 
 verstr = sys.argv[1]

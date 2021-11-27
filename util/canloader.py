@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-#!/usr/bin/env python
+#
+# SPDX-License-Identifier: MIT
 #
 # MIT License
 #

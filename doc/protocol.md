@@ -298,6 +298,6 @@ A REBOOT command was considered but removed as not necessary and to simplify
 the app starting logic.
 
 See also the startup flow diagram in
-(Starting the boot loader)[#starting-the-boot-loader].
+[Starting the boot loader](#starting-the-boot-loader).
 
 ![Restart](img/reboot.svg)

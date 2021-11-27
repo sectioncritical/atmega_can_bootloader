@@ -24,7 +24,7 @@ Using your github credentials:
     (sudo) docker login ghcr.io -u <username>
 
 you will be prompted for the password, which is a Github personal access
-token. You can also pass the token on the command line through and environment
+token. You can also pass the token on the command line through an environment
 variable.
 
     export GITHUB_PERSONAL_TOKEN=(the token value)
@@ -45,6 +45,11 @@ ORGNAME is a Github user name or organization name.
 In the Github workflow file, use this container:
 
     ghcr.io/ORGNAME/avr-build:latest
+
+Makefile
+--------
+
+There is a Makefile to help with all of the above steps. Try `make help`.
 
 Notes
 -----
