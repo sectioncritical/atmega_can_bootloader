@@ -51,11 +51,11 @@ ifeq ($(DEBUG), 1)
 	CFLAGS+=-g -Og
 endif
 
-all: unity $(EXE)
+all: $(EXE)
 
 $(EXE): $(SRCS)
-	$(CC) $(CFLAGS) $(INCS) $^ -o $@
-#	$(CC) $(CFLAGS) $(INCS) $^
+	$(CC) $(CFLAGS) $(INCS) $(SRCS) -o $@
+#	$(CC) $(CFLAGS) $(INCS) $(SRCS)
 
 .PHONY: tidy
 tidy:
@@ -65,9 +65,6 @@ tidy:
 clean: tidy
 	rm -f $(EXE)
 
-.PHONY: realclean
-realclean: clean
-	rm -rf unity
-
-unity:
-	git clone --depth 1 https://github.com/ThrowTheSwitch/Unity.git unity
+.PHONY: run
+run: $(EXE)
+	./$(EXE) -v

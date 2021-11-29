@@ -16,12 +16,16 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: clean
         run: make -C build clean
       - name: build
         run: make -C build VERSION=${GITHUB_REF#refs/tags/}
       - name: check
         run: make -C build check
+      - name: test
+        run: make -C build test
       - name: package
         run: make -C build package VERSION=${GITHUB_REF#refs/tags/v}
       - name: artifacts

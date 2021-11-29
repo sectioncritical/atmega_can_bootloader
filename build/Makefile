@@ -123,6 +123,8 @@ help:
 	@echo "erase            - erase the device using programmer (not usual)"
 	@echo ""
 	@echo "check            - run code checker"
+	@echo "test             - run unit tests"
+	@echo "cleantest        - clean up test residue"
 	@echo ""
 	@echo "package          - create versioned package archive"
 	@echo ""
@@ -183,6 +185,17 @@ avrping:
 .PHONY: check
 check:
 	cppcheck --std=c99 --platform=avr8 --enable=all -UUNIT_TEST --suppress=missingIncludeSystem --inline-suppr -v ../src/main.c
+
+# clean test build products
+.PHONY: cleantest
+cleantest:
+	make -C ../test clean
+
+# run the unit tests
+.PHONY: test
+test: cleantest
+	make -C ../test
+	make -C ../test run
 
 .PHONY: package
 package: $(HEXFILE)

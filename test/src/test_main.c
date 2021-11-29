@@ -32,6 +32,7 @@
 #include "libcrc/checksum.h"
 
 #include "avr/io.h"
+#include "avr/pgmspace.h"
 
 #include "main.c"
 
@@ -75,6 +76,11 @@ static uint8_t saved_rxcount;
 static uint16_t test_crc;
 static uint16_t membufidx;
 static uint8_t test_image[FLASH_SIZE];
+
+uint8_t pgm_read_byte(uint16_t addr)
+{
+    return test_image[addr];
+}
 
 TEST_SETUP(process_message)
 {
@@ -315,8 +321,8 @@ TEST(process_message, stop)
     test_message_stop();    // sends crc and verifies
 
     // verify eeprom length and crc was updated
-    uint16_t eep_len = eepmem[0] + (eepmem[1] << 8);
-    uint16_t eep_crc = eepmem[2] + (eepmem[3] << 8);
+    uint16_t eep_len = eepmem[E2END-3] + (eepmem[E2END-2] << 8);
+    uint16_t eep_crc = eepmem[E2END-1] + (eepmem[E2END] << 8);
     TEST_ASSERT_EQUAL_UINT16(24, eep_len);
     TEST_ASSERT_EQUAL_UINT16(test_crc, eep_crc);
 }
@@ -355,7 +361,7 @@ TEST(process_message, stop_bad)
     test_message_stop_bad();    // sends crc and verifies
 
     // verify eeprom was not modified
-    TEST_ASSERT_EACH_EQUAL_UINT8(0xFF, eepmem, 4);
+    TEST_ASSERT_EACH_EQUAL_UINT8(0xFF, &eepmem[E2END-3], 4);
 }
 
 TEST_GROUP_RUNNER(process_message)
