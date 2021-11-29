@@ -127,6 +127,7 @@ help:
 	@echo "cleantest        - clean up test residue"
 	@echo ""
 	@echo "package          - create versioned package archive"
+	@echo "program-pkg      - program from a release package (VERSION=1.2.3)"
 	@echo ""
 
 CC=avr-gcc
@@ -204,6 +205,15 @@ package: $(HEXFILE)
 	cp $(HEXFILE) package/.
 	cp $(ELFFILE) package/.
 	cp $(OUT)/$(PROGNAME).map package/.
+	cp ../CHANGELOG.md package/.
 	PKGNAME=$(PROGNAME)-$(VERSION); rm -rf $$PKGNAME; \
 	mv package $$PKGNAME; \
 	tar -zcvf $$PKGNAME.tar.gz $$PKGNAME/*
+
+# extract hex from release package and program it
+.PHONY: program-pkg
+program-pkg:
+	PKGNAME=$(PROGNAME)-$(VERSION); \
+	tar -zxvf $$PKGNAME.tar.gz; \
+	$(AVRDUDE_CMD) -U flash:w:$$PKGNAME/$(PROGNAME).hex:i; \
+	rm -rf $$PKGNAME
