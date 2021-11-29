@@ -27,4 +27,4 @@ Initial release of the ATMega CAN Bootloader
 
 * * * * *
 
-[1.0.0]: https://github.com/sectioncritical/atmega_can_bootloader/tags
+[1.0.0]: https://github.com/sectioncritical/atmega_can_bootloader/releases/tag/v1.0.0
